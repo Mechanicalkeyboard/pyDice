@@ -122,14 +122,13 @@ def roll_with_player_message(
 def build_game_panel(
     slack_client: WebClient, game_info: dict, state: str = "started"
 ) -> None:
-    players = dice10k.fetch_game(game_info["game_id"])["players"]
     scoreboard = PrettyTable()
     title = f"Game has {state}, follow in thread"
     if state == "completed":
         title = f"Game has {state}"
     scoreboard.field_names = ["Player", "Score", "Pending", "Possible", "Ice Broken"]
     scoreboard.title = title
-    for player in players:
+    for player in game_info["dice10k_state"]["players"]:
         scoreboard.add_row(
             [
                 player["name"],

@@ -38,7 +38,7 @@ def pass_dice(
         game_id=game_info["game_id"], user_id=game_info["users"][username]["user_id"]
     )
     turn_player = response["game-state"]["turn-player"]
-    if turn_player in common.who_can_steal(game_info["game_id"]):
+    if turn_player in common.who_can_steal(game_info=game_info):
         message = (
             dcs.message.create(
                 game_id=game_info["game_id"],
@@ -48,12 +48,12 @@ def pass_dice(
             .at_user(slack_id=game_info["users"][turn_player]["slack_id"])
             .in_thread(thread_id=game_info["parent_message_ts"])
         )
-        if not common.is_previous_winnable(game_id=game_info["game_id"]):
+        if not common.is_previous_winnable(game_info=game_info):
             message.add_button(
                 game_id=game_info["game_id"], text="Roll", action_id="roll_dice"
             )
         if game_info["users"][username].get("ice_broken", False) and (
-            username in common.who_can_steal(game_id=game_info["game_id"])
+            username in common.who_can_steal(game_info=game_info)
         ):
             message.add_button(
                 game_id=game_info["game_id"], text="Steal", action_id="steal_dice"
@@ -95,7 +95,7 @@ def pick_dice(
             .build()
         )
     elif response["message"].startswith("It's not your turn"):
-        players = dice10k.fetch_game(game_info["game_id"])["players"]
+        players = game_info["dice10k_state"]["players"]
         current_player = next(p for p in players if p["turn-order"] == 0)
         core.roll_with_player_message(
             slack_client=slack_client,

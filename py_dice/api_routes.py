@@ -42,6 +42,7 @@ def start_api():
         action = payload["actions"][0]["action_id"]
         game_id = common.get_game_id(payload)
         game_info = game_state[game_id]
+        game_info["dice10k_state"] = dice10k.fetch_game(game_info["game_id"])
         username = payload["user"]["username"]
         if common.is_broken(game_info, username):
             game_state[game_id]["users"][username]["ice_broken"] = True

@@ -3,7 +3,7 @@ from functools import reduce
 from uuid import UUID
 
 from logbook import Logger
-from py_dice import core, dcs, dice10k
+from py_dice import core, dcs
 from slack import WebClient
 
 log = Logger(__name__)
@@ -31,8 +31,8 @@ def is_valid_uuid(uuid_to_test: str, version: int = 4) -> bool:
     return True
 
 
-def who_can_steal(game_id: str, winning_threshold: int = 3000) -> list:
-    dice10k_state = dice10k.fetch_game(game_id)
+def who_can_steal(game_info: dict, winning_threshold: int = 3000) -> list:
+    dice10k_state = game_info["dice10k_state"]
     players = dice10k_state["players"]
     if len(players) > 1:
         previous_player = next(p for p in players if p["turn-order"] == 1)
@@ -45,7 +45,7 @@ def who_can_steal(game_id: str, winning_threshold: int = 3000) -> list:
             f"{player} \n"
             f"{bool((dice10k_state['pending-points'] + player['points']) < winning_threshold)} \n"
             f"{player['ice-broken?']}\n"
-            f"{is_robbable(game_id=game_id, username=previous_player['name'])}\n"
+            f"{is_robbable(game_info=game_info, username=previous_player['name'])}\n"
             f"{bool(previous_player['points'] >= 1000)}"
         )
         if (
@@ -56,7 +56,7 @@ def who_can_steal(game_id: str, winning_threshold: int = 3000) -> list:
             # Current user broke the ice
             and player["ice-broken?"]
             # Previous player is robbable
-            and is_robbable(game_id=game_id, username=previous_player["name"])
+            and is_robbable(game_info=game_info, username=previous_player["name"])
             # Verify current player has 1000 points
             and bool(previous_player["points"] >= 1000)
         ):
@@ -89,14 +89,13 @@ def is_game_over(
     response_url: str = "",
     winning_threshold: int = 3000,
 ) -> bool:
-    dice10k_state = dice10k.fetch_game(game_info["game_id"])
     winner = ""
-    if dice10k_state.get("players", None):
-        for p in dice10k_state["players"]:
+    if game_info["dice10k_state"].get("players", None):
+        for p in game_info["dice10k_state"]["players"]:
             if p["points"] == winning_threshold:
                 winner = p["name"]
             elif (p["points"] + p["pending-points"] == winning_threshold) and not (
-                who_can_steal(game_info["game_id"])
+                who_can_steal(game_info=game_info)
             ):
                 winner = p["name"]
             elif p["points"] + p["pending-points"] > winning_threshold:
@@ -121,9 +120,8 @@ def get_game_id(payload: dict) -> str:
         return payload["actions"][0]["value"]
 
 
-def is_robbable(game_id: str, username: str) -> bool:
-    # TODO: update to be checked once and maintained in state
-    players = dice10k.fetch_game(game_id)["players"]
+def is_robbable(game_info: dict, username: str) -> bool:
+    players = game_info["dice10k_state"]["players"]
     player_info = next(p for p in players if p["name"] == username)
     if player_info["points"] >= 1000:
         return True
@@ -136,15 +134,15 @@ def is_broken(game_info: dict, username: str) -> bool:
         username in game_info["users"]
         and "ice_broken" not in game_info["users"][username]
     ):
-        players = dice10k.fetch_game(game_info["game_id"])["players"]
+        players = game_info["dice10k_state"]["players"]
         player_info = next(p for p in players if p["name"] == username)
         if player_info["points"] >= 1000:
             return True
     return False
 
 
-def is_previous_winnable(game_id: str) -> bool:
-    players = dice10k.fetch_game(game_id)["players"]
+def is_previous_winnable(game_info: dict) -> bool:
+    players = game_info["dice10k_state"]["players"]
     previous_player = next(p for p in players if p["turn-order"] == 0)
     log.info(f"is_winnable {previous_player}")
     if previous_player["points"] + previous_player["pending-points"] == 3000:

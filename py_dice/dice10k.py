@@ -9,26 +9,13 @@ log = Logger(__name__)
 dice10k_url = "http://localhost:3000"
 
 
-def call_counter(func):
-    def helper(*args, **kwargs):
-        helper.calls += 1
-        return func(*args, **kwargs)
-
-    helper.calls = 0
-    helper.__name__ = func.__name__
-    return helper
-
-
 def create_game() -> dict:
     response = json.loads(requests.post(f"{dice10k_url}/games").content)
     log.debug(f"Create game response: {json.dumps(response, indent=2)}")
     return response
 
 
-@call_counter
 def fetch_game(game_id: str) -> dict:
-    # TODO make this call less.
-    log.info(f"fetch_game counter: {fetch_game.calls}")
     response = json.loads(requests.get(f"{dice10k_url}/games/{game_id}").content)
     log.debug(f"Fetch game response: {json.dumps(response, indent=2)}")
     return response
